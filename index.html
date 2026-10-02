@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Archivo de Planetas - Mi Amor Cósmico 💫</title>
+
+  <!-- Preload de las primeras imágenes importantes (2k) -->
+  <link rel="preload" as="image" href="https://www.solarsystemscope.com/textures/download/2k_mercury.jpg" fetchpriority="high">
+  <link rel="preload" as="image" href="https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg" fetchpriority="high">
+  <link rel="preload" as="image" href="https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg" fetchpriority="high">
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      height: 100dvh;
+      background: radial-gradient(ellipse at bottom, #0a0015 0%, #000 80%);
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    canvas { 
+      position: absolute; 
+      inset: 0; 
+      pointer-events: none; 
+      z-index: 1;
+    }
+
+    #ui {
+      position: relative;
+      z-index: 5;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 1vh 3vw;
+    }
+
+    #title {
+      text-align: center;
+      font-size: clamp(3.2rem, 14vw, 7rem);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin: 0.8vh 0 0.5vh;
+      opacity: 0;
+      transform: translateY(-25px);
+      transition: all 1.2s ease-out;
+      text-shadow: 0 0 45px #ff69b4, 0 0 90px #8a2be2, 0 0 140px #4b0082;
+      z-index: 10;
+    }
+
+    #desc {
+      text-align: center;
+      font-size: clamp(1.05rem, 4.5vw, 1.6rem);
+      line-height: 1.4;
+      max-width: 94%;
+      margin: 0 auto 3.5vh;
+      color: #f0e0ff;
+      opacity: 0;
+      transform: translateY(25px);
+      transition: all 1.3s ease-out;
+      z-index: 10;
+    }
+
+    #planet-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 8;
+    }
+
+    #initial-message {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(2.4rem, 10vw, 5.2rem);
+      text-align: center;
+      color: #ff85c0;
+      text-shadow: 0 0 30px #ff69b4, 0 0 60px #c71585;
+      opacity: 1;
+      transition: opacity 1.6s ease-out;
+      pointer-events: none;
+      z-index: 9;
+      white-space: pre-wrap;
+      line-height: 1.15;
+    }
+
+    #initial-message.fade-out {
+      opacity: 0;
+    }
+
+    #big-planet {
+      width: 70vmin;
+      height: 70vmin;
+      max-width: 85vw;
+      max-height: 85vw;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      box-shadow: 
+        inset -45% -25% 90% rgba(0,0,0,0.95),
+        inset 35% 35% 120px rgba(255,240,180,0.4),
+        0 0 160px 80px rgba(220,180,255,0.7),
+        0 0 320px 140px rgba(180,100,255,0.4),
+        0 0 60px 30px rgba(255,255,255,0.3);
+      opacity: 0;
+      transform: scale(0.7);
+      transition: all 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+      animation: none;
+      z-index: 7;
+    }
+
+    @keyframes rotatePlanet {
+      to { transform: rotate(360deg); }
+    }
+
+    #sidebar-planets {
+      position: absolute;
+      left: 2vw;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 2.5vh;
+      z-index: 12;
+    }
+
+    .mini-planet {
+      width: 10vmin;
+      height: 10vmin;
+      min-width: 52px;
+      min-height: 52px;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      opacity: 0.92;
+      transition: all 0.4s ease;
+      box-shadow: 0 0 22px rgba(255,255,255,0.45);
+      border: 3px solid #000a;
+      z-index: 13;
+    }
+
+    .mini-planet.active {
+      opacity: 1;
+      transform: scale(1.45);
+      box-shadow: 0 0 65px 22px #ff69b4, 0 0 130px 45px #8a2be2;
+      border-color: #ffffffb0;
+    }
+
+    .planet-label {
+      position: absolute;
+      left: 12vmin;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: clamp(1rem, 3.5vw, 1.25rem);
+      color: #ffeb3b;
+      background: rgba(0,0,0,0.75);
+      padding: 0.5em 1.2em;
+      border-radius: 2em;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s;
+      white-space: nowrap;
+      text-shadow: 0 0 12px #000;
+      z-index: 14;
+    }
+
+    .mini-planet:hover .planet-label,
+    .mini-planet.active .planet-label { opacity: 1; }
+
+    .heart-float {
+      position: absolute;
+      font-size: clamp(2.8rem, 8vw, 4.5rem);
+      pointer-events: none;
+      opacity: 0;
+      animation: heartRise 5s ease-out forwards;
+      z-index: 15;
+      text-shadow: 0 0 20px #ff1493;
+    }
+
+    @keyframes heartRise {
+      0%   { opacity: 0; transform: translate(0, 0) scale(0.4) rotate(0deg); }
+      15%  { opacity: 1; transform: translate(6vw, -20vh) scale(1.4) rotate(15deg); }
+      100% { opacity: 0; transform: translate(25vw, -130vh) scale(0.5) rotate(-35deg); }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars-deep"></canvas>
+<canvas id="stars-mid"></canvas>
+<canvas id="stars-front"></canvas>
+<canvas id="stars-twinkle"></canvas>
+
+<div id="ui">
+  <div id="title">MERCURIO</div>
+
+  <div id="planet-center">
+    <div id="initial-message">Presiona cada planeta, mi love</div>
+    <div id="big-planet"></div>
+  </div>
+
+  <div id="desc">
+    Aunque estás tan cerca del Sol que quemas, mi amor por ti es aún más intenso. Cruzaría constelaciones enteras solo para orbitar a tu lado.
+  </div>
+
+  <div id="sidebar-planets"></div>
+</div>
+
+<script>
+const planetsData = [
+  { 
+    name: "MERCURIO", 
+    dist: "0.39 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_mercury.jpg", 
+    text: "Aunque estás tan cerca del Sol que quemas, mi amor por ti es aún más intenso. Cruzaría constelaciones enteras solo para orbitar a tu lado.", 
+    rot: 18 
+  },
+  { 
+    name: "VENUS", 
+    dist: "0.72 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg", 
+    text: "Eres el planeta del amor eterno. Tu calor y belleza me envuelven como una atmósfera que nunca quiero abandonar.", 
+    rot: 24 
+  },
+  { 
+    name: "TIERRA", 
+    dist: "1 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg", 
+    text: "En tu azul y verde encontré mi hogar. Eres el único lugar donde mi corazón late con oxígeno y amor verdadero.", 
+    rot: 22 
+  },
+  { 
+    name: "MARTE", 
+    dist: "1.52 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_mars.jpg", 
+    text: "Vamos a Marte juntos 💫. Conquistaré tormentas rojas y cráteres solo para verte brillar bajo tus lunas.", 
+    rot: 30 
+  },
+  { 
+    name: "JÚPITER", 
+    dist: "5.20 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg", 
+    text: "Tu grandeza me protege como un escudo gigante. Mi amor es tan vasto como tus tormentas eternas.", 
+    rot: 14 
+  },
+  { 
+    name: "SATURNO", 
+    dist: "9.58 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_saturn.jpg", 
+    text: "Tus anillos son la corona de mi universo. Eres la joya perfecta que adorna cada latido de mi corazón.", 
+    rot: 18 
+  },
+  { 
+    name: "URANO", 
+    dist: "19.18 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_uranus.jpg", 
+    text: "Aunque todo gire diferente en ti, mi amor está perfectamente alineado contigo para siempre.", 
+    rot: 20 
+  },
+  { 
+    name: "NEPTUNO", 
+    dist: "30.07 UA", 
+    img: "https://www.solarsystemscope.com/textures/download/2k_neptune.jpg", 
+    text: "En la lejanía azul más profunda, mi amor llega a ti sin importar los años luz que nos separen.", 
+    rot: 26 
+  }
+];
+
+// Precarga REAL con promesas + mensaje cuando termine
+function preloadAllPlanets() {
+  const promises = planetsData.map(planet => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = () => {
+        console.warn(`Fallo al cargar ${planet.name}, pero seguimos`);
+        resolve(); // no paramos si una falla
+      };
+      img.src = planet.img;
+    });
+  });
+
+  Promise.all(promises).then(() => {
+    console.log("¡Todas las imágenes 2K precargadas! Listo para brillar ✨");
+    // Puedes cambiar el mensaje inicial si quieres
+    // initialMessage.textContent = "¡Todo listo! Toca un planeta mi amor 💕";
+  });
+}
+
+// Iniciar precarga inmediatamente
+preloadAllPlanets();
+
+const titleElem = document.getElementById('title');
+const descElem = document.getElementById('desc');
+const planetBig = document.getElementById('big-planet');
+const sidebar = document.getElementById('sidebar-planets');
+const initialMessage = document.getElementById('initial-message');
+
+let activeIdx = -1;
+
+planetsData.forEach((planet, idx) => {
+  const mini = document.createElement('div');
+  mini.className = 'mini-planet';
+  mini.style.backgroundImage = `url(${planet.img})`;
+
+  const label = document.createElement('div');
+  label.className = 'planet-label';
+  label.textContent = planet.name;
+  mini.appendChild(label);
+
+  mini.onclick = () => switchPlanet(idx);
+  mini.ontouchstart = e => { e.preventDefault(); switchPlanet(idx); };
+
+  sidebar.appendChild(mini);
+});
+
+function switchPlanet(newIdx) {
+  if (newIdx === activeIdx) return;
+  activeIdx = newIdx;
+  const p = planetsData[newIdx];
+
+  if (initialMessage) {
+    initialMessage.classList.add('fade-out');
+    setTimeout(() => initialMessage.style.display = 'none', 1600);
+  }
+
+  titleElem.style.opacity = 0;
+  titleElem.style.transform = 'translateY(-25px)';
+  descElem.style.opacity = 0;
+  descElem.style.transform = 'translateY(25px)';
+  planetBig.style.opacity = 0;
+  planetBig.style.transform = 'scale(0.7)';
+
+  setTimeout(() => {
+    titleElem.textContent = p.name;
+    descElem.textContent = p.text;
+    planetBig.style.backgroundImage = `url(${p.img})`;
+    planetBig.style.animation = `rotatePlanet linear infinite ${p.rot}s`;
+
+    titleElem.style.opacity = 1;
+    titleElem.style.transform = 'translateY(0)';
+    descElem.style.opacity = 1;
+    descElem.style.transform = 'translateY(0)';
+    planetBig.style.opacity = 1;
+    planetBig.style.transform = 'scale(1)';
+
+    // Menos corazones para mejor performance
+    for (let i = 0; i < 8; i++) {
+      setTimeout(spawnHeart, i * 180 + Math.random() * 220);
+    }
+  }, 700);
+
+  document.querySelectorAll('.mini-planet').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.mini-planet')[newIdx].classList.add('active');
+}
+
+function spawnHeart() {
+  const heart = document.createElement('div');
+  heart.className = 'heart-float';
+  heart.innerHTML = Math.random() > 0.4 ? '💖' : Math.random() > 0.7 ? '💫' : '✨';
+  heart.style.left = (Math.random() * 80 + 10) + 'vw';
+  heart.style.top = '55%';
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 6000);
+}
+
+// Estrellas (sin cambios, ya están optimizadas)
+function makeStarsLayer(id, qty, minSz, maxSz, blinkSpeed, moveSpeed) {
+  const c = document.getElementById(id);
+  const ctx = c.getContext('2d');
+  let w, h, stars = [];
+
+  const resize = () => { 
+    w = c.width = innerWidth; 
+    h = c.height = innerHeight; 
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < qty; i++) {
+    stars.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      sz: minSz + Math.random() * (maxSz - minSz),
+      a: 0.3 + Math.random() * 0.7,
+      phase: Math.random() * Math.PI * 2,
+      dx: (Math.random() - 0.5) * moveSpeed,
+      dy: (Math.random() - 0.5) * moveSpeed * 0.3
+    });
+  }
+
+  function anim() {
+    ctx.clearRect(0, 0, w, h);
+    stars.forEach(s => {
+      s.phase += blinkSpeed;
+      const bright = s.a + Math.sin(s.phase) * 0.5;
+      ctx.globalAlpha = Math.max(0.08, bright);
+      ctx.fillStyle = bright > 0.9 ? '#ffffff' : (bright > 0.6 ? '#f0f8ff' : '#e0e0ff');
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.sz, 0, Math.PI*2);
+      ctx.fill();
+      s.x += s.dx;
+      s.y += s.dy;
+      if (s.x < 0 || s.x > w) s.x = Math.random()*w;
+      if (s.y < 0 || s.y > h) s.y = Math.random()*h;
+    });
+    requestAnimationFrame(anim);
+  }
+  anim();
+}
+
+makeStarsLayer('stars-deep',   800, 0.3, 1.2, 0.008, 0.02);
+makeStarsLayer('stars-mid',    400, 0.8, 2.0, 0.012, 0.06);
+makeStarsLayer('stars-front',  150, 1.5, 3.5, 0.018, 0.10);
+makeStarsLayer('stars-twinkle',120, 1.0, 2.8, 0.025, 0.00);
+
+</script>
+</body>
+</html>
